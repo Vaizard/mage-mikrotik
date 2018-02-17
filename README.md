@@ -1,6 +1,6 @@
 # mage-mikrotik
 
-A somewhat unusual Ansible Mikrotik role. Until there's a propper Mikrotik connector, this role will generate a bash script and relevant (helper) files in `{{ mikrotik_script_path }}`. These are then to be executed manually. In order to understand this role, please see the /mage-mikrotik/templates/mikrotik.sh.j2 template. Basic rules:
+A somewhat unusual Ansible Mikrotik role. Until there's a propper Mikrotik connector, this role will generate a bash script and relevant (helper) files in `{{ mikrotik_script_path }}`. These are then to be executed manually. In order to understand this role, please see the templates/mikrotik.sh.j2 template. Basic rules:
 
 - some mikrotik.item.ssh_* are required
 - if you define
