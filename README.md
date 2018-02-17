@@ -1,7 +1,12 @@
 # mage-mikrotik
 
-A somewhat unusual Ansible Mikrotik role. Until there's a propper Mikrotik connector, this role will generate a bash script and relevant (helper) files in {{ mikrotik_script_path }}. 
-These are then to be executed manually.
+A somewhat unusual Ansible Mikrotik role. Until there's a propper Mikrotik connector, this role will generate a bash script and relevant (helper) files in `{{ mikrotik_script_path }}`. These are then to be executed manually. In order to understand this role, please see the /mage-mikrotik/templates/mikrotik.sh.j2 template. Basic rules:
+
+- some mikrotik.item.ssh_* are required
+- if you define
+  - ssh_keys, ssh keys will get uploaded and installed
+  - vpn_sstp, a sstp vpn gets configured and enabled (all including cert generation, ip pools, profiles and rainbow glitter) 
+  - vpn_user, a vpn (sstp) user gets configured.
 
 Example playbook
 
