@@ -65,9 +65,9 @@ ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') 
 # TODO
 # - make ansible managable
 # - document diccerence between 10 and 192 ranges (10s drop packets between subnets, 192 don't)
-/interface bridge add name=bridge-sstp-admins arp=proxy-arp
-/ip pool add name=sstp-pool ranges=192.168.50.1-192.168.50 next-pool=none
-/ppp profile add name=sstp-admin2 local-address=192.168.50.254 remote-address=sstp-pool2 bridge=bridge-sstp-admins
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface bridge add name=bridge-sstp-admins arp=proxy-arp'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/ip pool add name=sstp-pool ranges=192.168.50.1-192.168.50 next-pool=none'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/ppp profile add name=sstp-admin2 local-address=192.168.50.254 remote-address=sstp-pool2 bridge=bridge-sstp-admins'
 
 cd ..
 {% endif %}
