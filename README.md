@@ -23,7 +23,7 @@ Example playbook
          ssh_user: admin
          ssh_pass: mysecretpass
          ssh_port: 22
-             vpn_sstp:
+         vpn_sstp:
             certpass: 96EazNUJwwNuq2Kkzbk7ihMdAR0rzxWQoYcdDJ0YPvk
             certbits: 8192
             certsubj: "/C=CZ/O=Example Inc./CN=gw01.example.com"
