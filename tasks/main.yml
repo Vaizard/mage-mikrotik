@@ -1,0 +1,17 @@
+---
+
+- name: "Wiping script path clean (per configuration)"
+  file:
+    path: "{{ mikrotik_script_path }}/"
+    state: absent
+  when: mikrotik_script_wipe == true
+
+- name: "Ensuring script path exists"
+  file:
+    path: "{{ mikrotik_script_path }}"
+    state: directory
+    mode: 0755
+
+- name: "Populating script path"
+  template: src=mikrotik.sh.j2 dest="{{ mikrotik_script_path }}/{{ item.ssh_host }}.sh" mode=0755
+  with_items: "{{ mikrotik }}"
