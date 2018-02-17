@@ -5,7 +5,7 @@ These are then to be executed manually.
 
 Example playbook
 
-```
+```yml
 ---
 - hosts: localhost
   vars:
