@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+pushd {{ mikrotik_script_path }}
+
+# ###
+# ### ssh keys
+# ###
+
+
+{% if 'ssh_keys' in item %}
+
+{% for key in item.ssh_keys %}
+scp -P {{ item.ssh_port | default('22') }} {{ key.src }} {{ item.ssh_user }}@{{ item.ssh_host }}:{{ key.dest }}
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/user ssh-keys import public-key-file="{{ key.dest }}" user="{{ key.user }}"'
+{% endfor %}
+
+{% endif %}
+
+# ###
+# vpn sstp
+# ###
+
+{% if 'vpn_sstp' in item %}
+
+mkdir sstp
+cd sstp
+echo "{{ item.vpn_sstp.certpass }}" > ./passphrase.txt
+
+# generate CA [private key, certificate] pair
+openssl genrsa -des3 -passout file:passphrase.txt -out {{ item.ssh_host }}_sstp_ca.key {{ item.vpn_sstp.certbits }}
+openssl req -new -passin file:passphrase.txt -x509 -days 3650 -key {{ item.ssh_host }}_sstp_ca.key -out {{ item.ssh_host }}_sstp_ca.crt -subj {{ item.vpn_sstp.certsubj | default(item.ssh_host) }}
+
+# generate server [private key, certificate] pair
+openssl genrsa -des3 -passout file:passphrase.txt -out {{ item.ssh_host }}_sstp_server.key {{ item.vpn_sstp.certbits }}
+openssl req -new -passin file:passphrase.txt -key {{ item.ssh_host }}_sstp_server.key -out {{ item.ssh_host }}_sstp_server.csr -subj {{ item.vpn_sstp.certsubj | default(item.ssh_host) }}
+openssl x509 -req -passin file:passphrase.txt -days 3650 -in {{ item.ssh_host }}_sstp_server.csr -CA {{ item.ssh_host }}_sstp_ca.crt -CAkey {{ item.ssh_host }}_sstp_ca.key -set_serial 01 -out {{ item.ssh_host }}_sstp_server.crt
+
+# generate client [private key, certificate] pair
+openssl genrsa -des3 -passout file:passphrase.txt -out {{ item.ssh_host }}_sstp_client.key {{ item.vpn_sstp.certbits }}
+openssl req -new -passin file:passphrase.txt -key {{ item.ssh_host }}_sstp_client.key -out {{ item.ssh_host }}_sstp_client.csr -subj {{ item.vpn_sstp.certsubj | default(item.ssh_host) }}
+openssl x509 -req -passin file:passphrase.txt -days 3650 -in {{ item.ssh_host }}_sstp_client.csr -CA {{ item.ssh_host }}_sstp_ca.crt -CAkey {{ item.ssh_host }}_sstp_ca.key -set_serial 01 -out {{ item.ssh_host }}_sstp_client.crt
+
+# check the cert
+openssl x509 -noout -text -in {{ item.ssh_host }}_sstp_server.crt -purpose
+
+scp -P {{ item.ssh_port | default('22') }} ./"{{ item.ssh_host }}_sstp_ca.crt" {{ item.ssh_user }}@{{ item.ssh_host }}:"{{ item.ssh_host }}_sstp_ca.crt"
+scp -P {{ item.ssh_port | default('22') }} ./"{{ item.ssh_host }}_sstp_ca.key" {{ item.ssh_user }}@{{ item.ssh_host }}:"{{ item.ssh_host }}_sstp_ca.key"
+scp -P {{ item.ssh_port | default('22') }} ./"{{ item.ssh_host }}_sstp_server.crt" {{ item.ssh_user }}@{{ item.ssh_host }}:"{{ item.ssh_host }}_sstp_server.crt"
+scp -P {{ item.ssh_port | default('22') }} ./"{{ item.ssh_host }}_sstp_server.key" {{ item.ssh_user }}@{{ item.ssh_host }}:"{{ item.ssh_host }}_sstp_server.key"
+
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/certificate import file-name="{{ item.ssh_host }}_sstp_ca.crt" passphrase="{{ item.vpn_sstp.certpass }}"'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/certificate import file-name="{{ item.ssh_host }}_sstp_ca.key" passphrase="{{ item.vpn_sstp.certpass }}"'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/certificate import file-name="{{ item.ssh_host }}_sstp_server.crt" passphrase="{{ item.vpn_sstp.certpass }}"'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/certificate import file-name="{{ item.ssh_host }}_sstp_server.key" passphrase="{{ item.vpn_sstp.certpass }}"'
+
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server set certificate="{{ item.ssh_host }}_sstp_server"'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server set enabled=yes'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server set pfs=yes'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server set tls-version="only-1.2"'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server set authentication=mschap2'
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server print'
+
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/interface sstp-server server print'
+
+# TODO
+# - make ansible managable
+# - document diccerence between 10 and 192 ranges (10s drop packets between subnets, 192 don't)
+/interface bridge add name=bridge-sstp-admins arp=proxy-arp
+/ip pool add name=sstp-pool ranges=192.168.50.1-192.168.50 next-pool=none
+/ppp profile add name=sstp-admin2 local-address=192.168.50.254 remote-address=sstp-pool2 bridge=bridge-sstp-admins
+
+cd ..
+{% endif %}
+
+# ###
+# vpn user
+# ###
+
+{% if 'vpn_user' in item %}
+{% for user in item.vpn_user %}
+ssh {{ item.ssh_user }}@{{ item.ssh_host }} -p {{ item.ssh_port | default('22') }} '/ppp secret add name="{{ user.user | default(item.ssh_user) }}" service={{ user.service | default(mt_vpn_provider_service) }} profile={{ user.vpn_profile | default(mt_vpn_provider_profile) }} password="{{ user.pass | default(item.ssh_pass) }}"'
+{% endfor %}
+
+{% endif %}
+
+
+popd
