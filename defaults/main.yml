@@ -1,28 +1,175 @@
----
-mikrotik_script_wipe: true
-mikrotik_script_path: ~/mikrotik-run
-mt_vpn_provider_service: sstp
-mt_vpn_provider_profile: default
-mikrotik: []
+###
+### role setup
+###
+mt_host_files: "host_files/{{ inventory_hostname }}"
+mt_playbook_dir: "{{ playbook_dir }}"
 
-#mikrotik:
-#   - ssh_host: gw01.example.com
-#     ssh_user: admin
-#     ssh_pass: mysecretpass
-#     ssh_port: 22
-#     vpn_sstp:
-#        certpass: 96EazNUJwwNuq2Kkzbk7ihMdAR0rzxWQoYcdDJ0YPvk
-#        certbits: 8192
-#        certsubj: "/C=CZ/O=Example Inc./CN=gw01.example.com"
-#     vpn_user:
-#        - user: my_vpn_name
-#          pass: AFQnWlL51Kp55+96afcNnVZPKPga5OSw1rfl39B1t0U
-#          service: sstp
-#          profile: sstp-admin
-#     ssh_keys:
-#        - user: admin
-#          src: ~/.ssh/id_rsa.pub
-#          dest: my_key_rsa.pub
-#   - ssh_host: gw02.example.com
-#     ssh_user: admin
-#     ssh_pass: myothersecretpass
+###
+### base setup
+###
+mt_system_identity: "{{ inventory_hostname }}"
+mt_port_ssh: 22
+mt_port_www_ssl: 443
+mt_ntp_enabled: true
+mt_ntp_pri: 216.239.35.8  # time.google.com
+mt_ntp_sec: 37.187.104.44 # 0.pool.ntp.org
+mt_rb_autoupgrade: "yes"
+mt_rb_silentboot: "no"
+mt_timezone: "Europe/Prague"
+
+###
+### certs
+###
+mt_cert_files: "{{ mt_host_files }}/mage-mikrotik/curr/{{ inventory_hostname }}"
+mt_cert_regen: false
+mt_cert_passphrase: some-very-strong-password-here
+mt_cert_subj: "/C=CZ/O=Industra/CN={{ inventory_hostname }}"
+
+###
+### wireless configuration
+###
+mt_wireless_enabled: true
+mt_wireless_psk: some-other-strong-password
+
+###
+### users
+###
+mt_admin_sshkey: /home/admin/.ssh/id_rsa.pub # must be absolute path
+mt_admin_passwd: YOUR-ADMIN-PASSWORD-HERE
+mt_users: 
+  - name: user
+    pass: kgrjlkKL13jawnqbz
+    key:  ~/.ssh/id_rsa.pub # must be absolute path
+
+###
+### sstp
+###
+mt_sstp_enabled: true
+mt_sstp_profile: default
+mt_sstp_ippool: 192.168.44.1-192.168.44.100
+mt_sstp_local_address: 192.168.44.254
+mt_sstp_users:
+  - username: admin
+    profile: "{{ mt_sstp_profile }}"
+    password: "{{ mt_admin_passwd }}"
+
+###
+### dhcp
+###
+
+mt_dhcp_leases: []
+
+#mt_dhcp_leases:
+#  - name: "server01 (teh-ole-one)"
+#    address: 192.168.88.100
+#    mac_address: F0:AB:12:BA:92:81
+#    forwards:
+#      - { protocol: tcp, dst_port: 11022, nxt_port: 22 }
+#      - { protocol: tcp, dst_port: 21443, nxt_port: 443 }
+#  - name: "server02 (teh-new-one)"
+#    address: 192.168.88.101
+#    mac_address: A4:AD:AF:BA:42:5A
+#    nat:
+#      - { protocol: tcp, dst_port: 11122, nxt_port: 22 }
+#      - { protocol: tcp, dst_port: 21080, nxt_port: 80 }
+#  - name: "Printer"
+#    address: 192.168.88.150
+#    mac_address: 55:EE:1D:88:CC:44
+#    always_broadcast: "yes"
+
+###
+### firewall (port forwarding)
+###
+mt_firewall_pf: []
+#mt_firewall_pf:
+#  - { protocol: tcp, dst_port: 28080, nxt_addr: 192.168.88.101, nxt_port: 8080 }
+
+###
+### commands
+###
+mt_security_commands:
+  - "/ip service set api disabled=yes"
+  - "/ip service set ftp disabled=yes"
+  - "/ip service set telnet disabled=yes"
+  - "/ip service set www disabled=yes"
+  - "/ip service set www-ssl certificate={{ inventory_hostname }}_https.crt_0 disabled=no port={{ mt_port_www_ssl }}"
+  - "/ip service set api-ssl certificate={{ inventory_hostname }}_https.crt_0 disabled=yes"
+  - "/ip ssh set strong-crypto=yes"
+  - "/tool bandwidth-server set enabled=no"
+  - "/tool mac-server set allowed-interface-list=none"
+  - "/tool mac-server mac-winbox set allowed-interface-list=LAN"
+  - "/tool mac-server ping set enabled=no"
+  - "/system identity set name={{ mt_system_identity }}"
+  - "/system routerboard settings set auto-upgrade={{ mt_rb_autoupgrade }} silent-boot={{ mt_rb_silentboot }}"
+  - '/system ntp client set enabled={{ "yes" if mt_ntp_enabled else "no" }} primary-ntp={{ mt_ntp_pri }} secondary-ntp={{ mt_ntp_sec }}'
+  - "/system clock set time-zone-name={{ mt_timezone }}"
+  - "/ip service set ssh port={{ mt_port_ssh }}"
+
+mt_wireless_commands:
+  - '/interface wireless {{ "enable" if mt_wireless_enabled else "disable" }} wlan1'
+  - '/interface wireless {{ "enable" if mt_wireless_enabled else "disable" }} wlan2'
+  - '/interface wireless security-profiles set [ find default=yes ] name="default" mode=dynamic-keys authentication-types=wpa2-psk unicast-ciphers=aes-ccm group-ciphers=aes-ccm wpa-pre-shared-key="{{ mt_wireless_psk }}" wpa2-pre-shared-key="{{ mt_wireless_psk }}" supplicant-identity="MikroTik" eap-methods=passthrough tls-mode=no-certificates tls-certificate=none mschapv2-username="" mschapv2-password="" static-algo-0=none static-key-0="" static-algo-1=none static-key-1="" static-algo-2=none static-key-2="" static-algo-3=none static-key-3="" static-transmit-key=key-0 static-sta-private-algo=none static-sta-private-key="" radius-mac-authentication=no radius-mac-accounting=no radius-eap-accounting=no interim-update=0s radius-mac-format=XX:XX:XX:XX:XX:XX radius-mac-mode=as-username radius-mac-caching=disabled group-key-update=5m management-protection=disabled management-protection-key=""'
+
+
+mt_firewall_commands:
+#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop invalid packets" connection-state=invalid'
+#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
+#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which does not have unicast source IP address" src-address-type=!unicast'
+#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which are not destined to routes IP address" dst-address-type=!local'
+#  - '/ip firewall filter add chain=input action=drop in-interface-list=!LAN comment="[MAGE] Drop all connections that dont come from the local network in-interface=LAN"'
+#  - '/ip firewall filter add chain=input comment="[MAGE] Accept established, related and untracked packets" connection-state=established,related,untracked'
+#  - '/ip firewall filter add chain=forward comment="[MAGE] Forward established, related and untracked packets" connection-state=established,related,untracked'
+#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop invalid packets forwards" connection-state=invalid'
+#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop new connections from internet which are not dst-natted" connection-nat-state=!dstnat connection-state=new in-interface-list=WAN'
+#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop all packet forwards from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
+#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards from local network to internet which should not exist in public network" dst-address-list=NotPublic in-interface-list=LAN'
+#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards in local network which does not have local network address" in-interface-list=LAN src-address=!192.168.88.0/24'
+
+mt_sstp_commands:
+  - '/interface bridge add name="bridge-sstp" arp="proxy-arp"'
+  - '/ip pool add name="pool-sstp" ranges="{{ mt_vpn_sstp_ippool }}"'
+  - '/ppp profile add name=vpn-sstp local-address={{ mt_vpn_sstp_local_address }} remote-address=pool-sstp bridge=bridge-sstp use-mpls=default use-compression=default use-encryption=default only-one=default change-tcp-mss=default use-upnp=default'
+  - '/interface sstp-server server set certificate="{{ inventory_hostname }}_sstp_server.crt_0"'
+  - '/interface sstp-server server set enabled=yes'
+  - '/interface sstp-server server set pfs=yes'
+  - '/interface sstp-server server set tls-version="only-1.2"'
+  - '/interface sstp-server server set authentication=mschap2'
+  - '/interface sstp-server server print'
+
+###
+### reasonable defaults
+###
+# mt_firewall_address_list configures `/ip firewall address-list`. Please NOTE THAT
+# mt_firewall_address_list.NotPublic contains a list of IP addresses, that RFCs
+# forbid for public usage. Incoming traffic from these IP's on the public interface
+# is most likely traffic you want to drop. This role configures your Mikrotik 
+# accordingly, but requires mt_firewall_address_list.NotPublic to be defined!
+# 
+# mt_firewall_address_list:
+#   List1:
+#     - [ 8.8.8.8/32, 'Public DNS (google)' ]
+#     - [ 1.1.1.1/32, 'Public DNS (cloudflare)' ]
+#   List2:
+#     - 10.20.1.0/24
+#     - 10.20.1.0/24
+#   <ListName>:
+#     - <ip-range>
+#     - [ <ip-range>, <optional-comment> ]
+mt_firewall_address_list:
+  NotPublic:
+    - [ '0.0.0.0/8', 'RFC6890' ]
+    - [ '10.0.0.0/8', 'RFC6890' ]
+    - [ '100.64.0.0/10', 'RFC6890' ]
+    - [ '127.0.0.0/8', 'RFC6890' ]
+    - [ '169.254.0.0/16', 'RFC6890' ]
+    - [ '172.16.0.0/12', 'RFC6890' ]
+    - [ '192.0.0.0/24', 'RFC6890' ]
+    - [ '192.0.2.0/24', 'RFC6890' ]
+    - [ '192.168.0.0/16', 'RFC6890' ]
+    - [ '192.88.99.0/24', 'RFC3068' ]
+    - [ '198.18.0.0/15', 'RFC6890' ]
+    - [ '198.51.100.0/24', 'RFC6890' ]
+    - [ '203.0.113.0/24', 'RFC6890' ]
+    - [ '224.0.0.0/4', 'RFC4601' ]
+
+

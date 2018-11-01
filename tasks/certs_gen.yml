@@ -1,0 +1,64 @@
+---
+
+- set_fact:
+    timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%SZ') }}"
+
+- name: "Ensuring backup target `{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/prev/{{ timestamp }}` exists"
+  file:
+    path: "{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/prev/{{ timestamp }}"
+    state: directory
+    mode: 0755
+  delegate_to: 127.0.0.1
+  when: foundcerts.matched > 0
+
+- name: "Backing up"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/prev/{{ timestamp }}"
+  with_fileglob:
+    - "{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/curr/*"
+  delegate_to: 127.0.0.1
+  when: foundcerts.matched > 0
+
+- name: "Preparing `{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/curr`"
+  file:
+    path: "{{ mt_playbook_dir }}/host_files/{{ inventory_hostname }}/mage-mikrotik/curr"
+    state: "{{ item }}"
+    mode: 0755
+  delegate_to: 127.0.0.1
+  with_items:
+    - absent
+    - directory
+
+- name: Generate CA private key and certificate
+  shell: | 
+    openssl genrsa -des3 -passout pass:{{ mt_cert_passphrase }} -out {{ mt_cert_files }}_ca.key 8192
+    openssl req -new -passin pass:{{ mt_cert_passphrase }} -x509 -days 3650 -key {{ mt_cert_files }}_ca.key -out {{ mt_cert_files }}_ca.crt -subj {{ mt_cert_subj }}
+  delegate_to: 127.0.0.1
+
+- name: Generate private keys
+  shell: "openssl genrsa -des3 -passout pass:{{ mt_cert_passphrase }} -out {{ mt_cert_files }}_{{ item }}.key 8192"
+  delegate_to: 127.0.0.1
+  loop:
+    - https
+    - sstp_server
+    - sstp_client
+
+- name: Generate CSRs
+  shell: "openssl req -new -passin pass:{{ mt_cert_passphrase }} -key {{ mt_cert_files }}_{{ item }}.key -out {{ mt_cert_files }}_{{ item }}.csr -subj {{ mt_cert_subj }}"
+  delegate_to: 127.0.0.1
+  loop:
+    - https
+    - sstp_server
+    - sstp_client
+
+- name: Generate certificates
+  shell: 'openssl x509 -req -passin pass:{{ mt_cert_passphrase }} -days 3650 -in {{ mt_cert_files }}_{{ item }}.csr -CA {{ mt_cert_files }}_ca.crt -CAkey {{ mt_cert_files }}_ca.key -set_serial "0x$(openssl rand -hex 16)" -out {{ mt_cert_files }}_{{ item }}.crt'
+  delegate_to: 127.0.0.1
+  loop:
+    - https
+    - sstp_server
+    - sstp_client
+
+- debug: msg="Remember, you can get information from the certificate anytime with `openssl x509 -noout -text -in {{ inventory_hostname }}_sstp_server.crt -purpose`"
+

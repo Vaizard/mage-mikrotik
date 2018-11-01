@@ -1,17 +1,97 @@
 ---
 
-- name: "Wiping script path clean (per configuration)"
-  file:
-    path: "{{ mikrotik_script_path }}/"
-    state: absent
-  when: mikrotik_script_wipe == true
+#######################################################
+### SSH KEYS
+#######################################################
 
-- name: "Ensuring script path exists"
-  file:
-    path: "{{ mikrotik_script_path }}"
-    state: directory
-    mode: 0755
+- name: Upload the admins ssh key
+  shell: | 
+    {% if ansible_ssh_pass is defined and ansible_ssh_pass | length > 0 %} sshpass -p "{{ ansible_ssh_pass }}"{% endif %}  scp -P {{ ansible_ssh_port | default('22') }} "{{ mt_admin_sshkey }}" admin@{{ ansible_host }}:"admin-{{ mt_admin_sshkey | basename }}"
+  delegate_to: 127.0.0.1
+  when: mt_admin_sshkey is defined
 
-- name: "Populating script path"
-  template: src=mikrotik.sh.j2 dest="{{ mikrotik_script_path }}/{{ item.ssh_host }}.sh" mode=0755
-  with_items: "{{ mikrotik }}"
+- name: "Setting up the admin user"
+  routeros_command:
+    commands: '/user set [find name="admin"] password="{{ mt_admin_passwd }}"'
+
+- name: "Setting up admin's ssh key"
+  routeros_command:
+    commands: '/user ssh-keys import public-key-file="admin-{{ mt_admin_sshkey }}" user=admin'
+  when: mt_admin_sshkey is defined
+
+
+######################################################
+### CERTS
+######################################################
+
+- name: "Check if we have certificates locally in `{{ mt_host_files }}/mage-mikrotik/curr`"
+  find:
+    paths: "{{ mt_host_files }}/mage-mikrotik/curr"
+    patterns: '*.crt'
+  register: foundcerts
+
+- name: "Ensure certs are generated, if need be."
+  include_tasks: certs_gen.yml
+  when: foundcerts.matched < 4 or mt_cert_regen
+
+- name: "Ensure certs are generated, if need be."
+  include_tasks: certs_up.yml
+  when: foundcerts.matched < 4 or mt_cert_regen
+
+
+######################################################
+### DHCP
+######################################################
+
+- include_tasks: dhcp_leases.yml
+  with_items: "{{ mt_dhcp_leases }}"
+  loop_control: 
+    loop_var: dhcp_item
+
+
+#####################################################
+### FIREWALL
+#####################################################
+
+- name: "Ensure `/ip firewall address-list` lists are defined"
+  routeros_command:
+     commands: "/ip firewall address-list add address={{ item.1.0 }} comment=\"[MAGE] {{ item.1.1 | default('') }}\" list={{ item.0.key }}"
+  loop: "{{ mt_firewall_address_list | dict2items | subelements('value') }}"
+
+- name: "Ensure `/ip firewall nat` portforwarding is configured"
+  routeros_command:
+    commands: '/ip firewall nat add chain="dstnat" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ item.nxt_addr }}" to-ports="{{ item.nxt_port }}" comment="[MAGE] {{ item.comment | default("")}}"'
+  with_items: "{{ mt_firewall_pf }}"
+  tags: [ portforwarding ]
+
+
+####################################################
+### VPN
+####################################################
+
+# TODO add remove unmanaged vpn users
+
+- name: Setting up SSTP users
+  routeros_command:
+    commands: "/ppp secret add name={{ item.username }} password={{ item.password }} service={{ item.profile }}"
+  with_items: "{{ mt_sstp_users }}"
+
+
+#######################################################
+### WIRELESS (last)
+#######################################################
+
+- name: "Ensure `/interface wireless` is configured"
+  routeros_command:
+    commands: "{{ mt_wireless_commands }}"
+  tags: [ wireless ]
+
+
+######################################################
+### SECURITY (after certs - www-ssl, last - ssh port)
+######################################################
+
+- name: "Ensure baseline configuration is in place."
+  routeros_command:
+    commands: "{{ mt_security_commands }}"
+  tags: [ base ]

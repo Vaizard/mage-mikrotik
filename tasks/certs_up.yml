@@ -1,0 +1,30 @@
+---
+
+- name: Upload the CA certificate
+  shell: |
+    {% if ansible_ssh_pass is defined and ansible_ssh_pass | length > 0 %} sshpass -p "{{ ansible_ssh_pass }}"{% endif %} scp -P {{ ansible_ssh_port | default('22') }} "host_files/{{ inventory_hostname }}/mage-mikrotik/curr/kai01_{{ item }}" admin@{{ ansible_host }}:"{{ inventory_hostname }}_{{ item }}"
+  delegate_to: 127.0.0.1
+  loop:
+    - ca.crt
+    - ca.key
+    - https.crt
+    - https.key
+    - sstp_server.crt
+    - sstp_server.key
+    - sstp_client.crt
+    - sstp_client.key
+
+- name: Remove obsolate certificates, import new certificates 
+  routeros_command:
+    commands:
+      - '/certificate remove [/certificate find where name="{{ inventory_hostname }}_{{ item }}_0"]'
+      - '/certificate import file-name="{{ inventory_hostname }}_{{ item }}" passphrase="{{ mt_cert_passphrase }}"'
+  loop:
+    - ca.crt
+    - ca.key
+    - https.crt
+    - https.key
+    - sstp_server.crt
+    - sstp_server.key
+    - sstp_client.crt
+    - sstp_client.key
