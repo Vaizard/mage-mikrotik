@@ -60,7 +60,7 @@
 
 - name: "Ensure `/ip firewall nat` portforwarding is configured"
   routeros_command:
-    commands: '/ip firewall nat add chain="dstnat" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ item.nxt_addr }}" to-ports="{{ item.nxt_port }}" comment="[MAGE] {{ item.comment | default("")}}"'
+    commands: '/ip firewall nat add chain="dstnat" dst-address="{{ item.dst_port | default(mt_firewall_default_dst_address) }}" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ item.nxt_addr }}" to-ports="{{ item.nxt_port }}" comment="[MAGE] {{ item.comment | default("")}}"'
   with_items: "{{ mt_firewall_pf }}"
   tags: [ portforwarding ]
 

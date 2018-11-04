@@ -16,6 +16,7 @@ mt_ntp_sec: 37.187.104.44 # 0.pool.ntp.org
 mt_rb_autoupgrade: "yes"
 mt_rb_silentboot: "no"
 mt_timezone: "Europe/Prague"
+mt_firewall_default_dst_address: "0.0.0.0"
 
 ###
 ### certs
