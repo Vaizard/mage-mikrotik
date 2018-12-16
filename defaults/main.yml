@@ -46,9 +46,10 @@ mt_users:
 ### sstp
 ###
 mt_sstp_enabled: true
-mt_sstp_profile: default
+mt_sstp_profile: vpn-sstp
 mt_sstp_ippool: 192.168.44.1-192.168.44.100
 mt_sstp_local_address: 192.168.44.254
+mt_sstp_port: 1443
 mt_sstp_users:
   - username: admin
     profile: "{{ mt_sstp_profile }}"
@@ -89,6 +90,11 @@ mt_firewall_pf: []
 ### commands
 ###
 mt_security_commands:
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept ssh traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept ssh traffic from WAN" dst-port={{ mt_port_ssh }} in-interface-list=WAN log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept www-ssl traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept www-ssl traffic from WAN" dst-port={{ mt_port_www_ssl }} in-interface-list=WAN log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept sstp traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept sstp traffic from WAN" dst-port={{ mt_sstp_port }} in-interface-list=WAN protocol=tcp place-before=3 ]'
+  - '/ip firewall filter move [/ip firewall filter find comment="[MAGE] Accept ssh traffic from WAN"] 3'
+  - '/ip firewall filter move [/ip firewall filter find comment="[MAGE] Accept www-ssl traffic from WAN"] 3'
   - "/ip service set api disabled=yes"
   - "/ip service set ftp disabled=yes"
   - "/ip service set telnet disabled=yes"
@@ -128,13 +134,14 @@ mt_firewall_commands:
 
 mt_sstp_commands:
   - '/interface bridge add name="bridge-sstp" arp="proxy-arp"'
-  - '/ip pool add name="pool-sstp" ranges="{{ mt_vpn_sstp_ippool }}"'
-  - '/ppp profile add name=vpn-sstp local-address={{ mt_vpn_sstp_local_address }} remote-address=pool-sstp bridge=bridge-sstp use-mpls=default use-compression=default use-encryption=default only-one=default change-tcp-mss=default use-upnp=default'
+  - '/ip pool add name="pool-sstp" ranges="{{ mt_sstp_ippool }}"'
+  - '/ppp profile add name=vpn-sstp local-address={{ mt_sstp_local_address }} remote-address=pool-sstp bridge=bridge-sstp use-mpls=default use-compression=default use-encryption=default only-one=default change-tcp-mss=default use-upnp=default'
   - '/interface sstp-server server set certificate="{{ inventory_hostname }}_sstp_server.crt_0"'
   - '/interface sstp-server server set enabled=yes'
   - '/interface sstp-server server set pfs=yes'
   - '/interface sstp-server server set tls-version="only-1.2"'
   - '/interface sstp-server server set authentication=mschap2'
+  - '/interface sstp-server server set port={{ mt_sstp_port }}'
   - '/interface sstp-server server print'
 
 ###
