@@ -119,18 +119,18 @@ mt_wireless_commands:
 
 
 mt_firewall_commands:
-#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop invalid packets" connection-state=invalid'
-#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
-#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which does not have unicast source IP address" src-address-type=!unicast'
-#  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which are not destined to routes IP address" dst-address-type=!local'
-#  - '/ip firewall filter add chain=input action=drop in-interface-list=!LAN comment="[MAGE] Drop all connections that dont come from the local network in-interface=LAN"'
-#  - '/ip firewall filter add chain=input comment="[MAGE] Accept established, related and untracked packets" connection-state=established,related,untracked'
-#  - '/ip firewall filter add chain=forward comment="[MAGE] Forward established, related and untracked packets" connection-state=established,related,untracked'
-#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop invalid packets forwards" connection-state=invalid'
-#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop new connections from internet which are not dst-natted" connection-nat-state=!dstnat connection-state=new in-interface-list=WAN'
-#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop all packet forwards from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
-#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards from local network to internet which should not exist in public network" dst-address-list=NotPublic in-interface-list=LAN'
-#  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards in local network which does not have local network address" in-interface-list=LAN src-address=!192.168.88.0/24'
+  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop invalid packets" connection-state=invalid'
+  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
+  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which does not have unicast source IP address" src-address-type=!unicast'
+  - '/ip firewall filter add action=drop chain=input comment="[MAGE] Drop all packets which are not destined to routes IP address" dst-address-type=!local'
+  - '/ip firewall filter add chain=input action=drop in-interface-list=!LAN comment="[MAGE] Drop all connections that dont come from the local network in-interface=LAN"'
+  - '/ip firewall filter add chain=input comment="[MAGE] Accept established, related and untracked packets" connection-state=established,related,untracked'
+  - '/ip firewall filter add chain=forward comment="[MAGE] Forward established, related and untracked packets" connection-state=established,related,untracked'
+  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop invalid packets forwards" connection-state=invalid'
+  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop new connections from internet which are not dst-natted" connection-nat-state=!dstnat connection-state=new in-interface-list=WAN'
+  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop all packet forwards from public internet which should not exist in public network" in-interface-list=WAN src-address-list=NotPublic'
+  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards from local network to internet which should not exist in public network" dst-address-list=NotPublic in-interface-list=LAN'
+  - '/ip firewall filter add action=drop chain=forward comment="[MAGE] Drop packet forwards in local network which does not have local network address" in-interface-list=LAN src-address=!192.168.88.0/24'
 
 mt_sstp_commands:
   - '/interface bridge add name="bridge-sstp" arp="proxy-arp"'

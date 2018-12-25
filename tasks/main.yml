@@ -34,7 +34,7 @@
   include_tasks: certs_gen.yml
   when: foundcerts.matched < 4 or mt_cert_regen
 
-- name: "Ensure certs are generated, if need be."
+- name: "Ensure certs are uploaded, if need be."
   include_tasks: certs_up.yml
   when: foundcerts.matched < 4 or mt_cert_regen
 
@@ -64,6 +64,11 @@
   with_items: "{{ mt_firewall_pf }}"
   tags: [ portforwarding ]
 
+- name: "Ensure `/ip firewall filter` allows the portforwards"
+  routeros_command:
+    commands: ':if ([:len [/ip firewall filter find where comment="[MAGE] Allow PF on {{ item.dst_port }}"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Allow PF on {{ item.dst_port }}" dst-port={{ item.dst_port }} in-interface-list=WAN protocol=tcp place-before=3 ]'
+  with_items: "{{ mt_firewall_pf }}"
+  tags: [ portforwarding ]
 
 ####################################################
 ### VPN
