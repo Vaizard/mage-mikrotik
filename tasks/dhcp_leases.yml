@@ -5,13 +5,6 @@
     commands: '/ip dhcp-server lease add address={{ dhcp_item.address }}  mac-address={{ dhcp_item.mac_address }} {{ "always-broadcast" + dhcp_item.always_broadcast if dhcp_item.always_broadcast is defined else "" }} server=defconf comment="[MAGE] {{ dhcp_item.name }}"'
 #  tags: [  ]
 
-#- name: "Portforwarding for {{ dhcp_item.name }}"
-#  routeros_command:
-#    commands: '/ip firewall nat add chain="dstnat" dst-address="{{ item.dst_addr | default(mt_firewall_default_dst_address) }}" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ dhcp_item.address }}" to-ports="{{ item.nxt_port }}" comment="[MAGE] {{ item.comment | default("") }}"'
-#  with_items: "{{ dhcp_item.forwards }}"
-#  when: dhcp_item.forwards is defined
-#  tags: [ portforwarding ]
-
 - name: "Portforwarding for {{ dhcp_item.name }}"
   routeros_command:
     commands: ':if ([:len [/ip firewall nat find where chain="dstnat" dst-address="{{ item.dst_addr | default(mt_firewall_default_dst_address) }}" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ dhcp_item.address }}" to-ports="{{ item.nxt_port }}"]] = 0) do [ /ip firewall nat add chain="dstnat" dst-address="{{ item.dst_addr | default(mt_firewall_default_dst_address) }}" dst-port="{{ item.dst_port }}" action="dst-nat" protocol="{{ item.protocol | default("tcp") }}" to-addresses="{{ dhcp_item.address }}" to-ports="{{ item.nxt_port }}" comment="[MAGE] {{ item.comment | default("") }}" ]'
