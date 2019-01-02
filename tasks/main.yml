@@ -66,7 +66,7 @@
 
 - name: "Ensure `/ip firewall filter` allows the portforwards"
   routeros_command:
-    commands: ':if ([:len [/ip firewall filter find where comment="[MAGE] Allow PF on {{ item.dst_port }}"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Allow PF on {{ item.dst_port }}" dst-port={{ item.dst_port }} in-interface-list=WAN protocol=tcp place-before=3 ]'
+    commands: ':if ([:len [/ip firewall filter find where comment="[MAGE] Allow PF on {{ item.dst_port }}"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Allow PF on {{ item.dst_port }}" dst-port={{ item.dst_port }} in-interface-list=all protocol=tcp place-before=3 ]'
   with_items: "{{ mt_firewall_pf }}"
   tags: [ portforwarding ]
 

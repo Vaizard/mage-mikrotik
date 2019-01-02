@@ -90,9 +90,9 @@ mt_firewall_pf: []
 ### commands
 ###
 mt_security_commands:
-  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept ssh traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept ssh traffic from WAN" dst-port={{ mt_port_ssh }} in-interface-list=WAN log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
-  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept www-ssl traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept www-ssl traffic from WAN" dst-port={{ mt_port_www_ssl }} in-interface-list=WAN log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
-  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept sstp traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept sstp traffic from WAN" dst-port={{ mt_sstp_port }} in-interface-list=WAN protocol=tcp place-before=3 ]'
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept ssh traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept ssh traffic from WAN" dst-port={{ mt_port_ssh }} in-interface-list=all log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept www-ssl traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept www-ssl traffic from WAN" dst-port={{ mt_port_www_ssl }} in-interface-list=all log=yes log-prefix="wan-admin" protocol=tcp place-before=3 ]'
+  - ':if ([:len [/ip firewall filter find where comment="[MAGE] Accept sstp traffic from WAN"]] = 0) do [ /ip firewall filter add action=accept chain=input comment="[MAGE] Accept sstp traffic from WAN" dst-port={{ mt_sstp_port }} in-interface-list=all protocol=tcp place-before=3 ]'
   - '/ip firewall filter move [/ip firewall filter find comment="[MAGE] Accept ssh traffic from WAN"] 3'
   - '/ip firewall filter move [/ip firewall filter find comment="[MAGE] Accept www-ssl traffic from WAN"] 3'
   - "/ip service set api disabled=yes"
